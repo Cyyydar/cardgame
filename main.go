@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strconv"
 	"time"
 )
 
@@ -43,45 +44,115 @@ type Hand struct {
 	hand []Card
 }
 
-func (h *Hand) get(d []Card) {
-	if 6-len(h.hand) < 0 || len(d) == 0 {
+// заполняет руку 6 картами
+func (h *Hand) fill() {
+	if 6-len(h.hand) < 0 || len(Deck) == 0 {
 		return
 	}
 	for i := len(h.hand); i < 6; i++ {
-		h.hand = append(h.hand, d[RandomNumber(len(d))])
-		d = Remove(d, i)
+		h.hand = append(h.hand, Deck[RandomNumber(len(Deck))])
+		Deck = Remove(Deck, i)
 	}
+}
+
+// Запрашивает номер карты, удаляет карту и возвращает ее
+func (h *Hand) pick() Card {
+	cardnum := 1
+	var choice string
+	fmt.Println(h.hand) // печатаем руку
+	for {
+		fmt.Scanf("%s\n", &choice) //ожидаем номер карты
+		if choice == "-" {
+			return Card{"", 0}
+		}
+
+		cardnum, _ = strconv.Atoi(choice)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+
+		if cardnum > 0 && cardnum <= len(h.hand) {
+			fmt.Println("\033[31m", h.hand[cardnum-1], "\033[0m") // печатаем карту
+			card := h.hand[cardnum-1]                             // запоминаем карту
+			h.hand = Remove(h.hand, cardnum-1)                    //удаляем карту из руки
+
+			return card
+		}
+		fmt.Println("Please try again")
+	}
+
 }
 
 func (h *Hand) attack(anotherHand *Hand) {
-	var cardnum int
+	var attackTable []Card
+	var deffenceTable []Card
 	deflen := len(anotherHand.hand)
 	for i := 0; i < deflen; i++ {
-		fmt.Println("Attack: Choice card")
-		fmt.Println(h.hand)
+		fmt.Println("\033[32mAttack: Choice card", 1, "-", len(h.hand), "\033[0m")
+		attackTable = append(attackTable, h.pick())
+		if attackTable[len(attackTable)-1].Value == 0 {
+			fmt.Println("End of attack")
+			break
+		}
+		fmt.Println(attackTable)   //печатаем столы
+		fmt.Println(deffenceTable) //печатаем столы
 
-		fmt.Scanf("\n%d", &cardnum)
-		h.hand = Remove(h.hand, cardnum)
-
-		fmt.Println("Deffence: Choice card")
-		fmt.Println(anotherHand.hand)
-
-		fmt.Scanf("\n%d", &cardnum)
-		anotherHand.hand = Remove(anotherHand.hand, cardnum)
-
+		fmt.Println("\033[32mDeffence: Choice card", 1, "-", len(anotherHand.hand), "\033[0m")
+		deffenceTable = append(deffenceTable, anotherHand.pick())
+		if deffenceTable[len(deffenceTable)-1].Value == 0 {
+			fmt.Println("You lose")
+			anotherHand.hand = append(anotherHand.hand, deffenceTable[:len(deffenceTable)-1]...)
+			anotherHand.hand = append(anotherHand.hand, attackTable...)
+			break
+		}
 	}
+
+	//h. fill(Deck)
+	//anotherHand. fill(Deck)
 }
 
+var Deck []Card
+
 func main() {
-	deck := make([]Card, 52)
+	Deck = make([]Card, 52)
+	deckGenerator(Deck)
+	fmt.Println(Deck, len(Deck))
 
-	deckGenerator(deck)
+	countPlayers := 0 // спрашиваем сколько игроков будет
+	for {
+		fmt.Println("Enter count players")
+		var temp string
+		fmt.Scanf("%s\n", &temp)
+		countPlayers, _ = strconv.Atoi(temp)
+		if countPlayers > 1 && countPlayers < 10 {
+			break
+		}
+		fmt.Println("Try again")
+	}
+	players := make([]Hand, countPlayers) // создаем слайс игроков
 
-	myHand := Hand{}
-	myHand.get(deck)
+	for i := range players {
+		players[i].fill()
+	}
+	fmt.Println(Deck, len(Deck))
 
-	yourHand := Hand{}
-	yourHand.get(deck)
+	// атака по очереди
+	for i := 0; ; i++ {
+		fmt.Println("Turn player", i)
+		if i == len(players)-1 {
+			players[i].attack(&players[0])
+			i = -1
+		} else {
+			players[i].attack(&players[i+1])
+		}
+	}
 
-	myHand.attack(&yourHand)
+	// myHand := Hand{}
+	// myHand. fill(Deck)
+
+	// yourHand := Hand{}
+	// yourHand. fill(Deck)
+
+	//myHand.attack(&yourHand)
+
 }
