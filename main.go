@@ -43,7 +43,7 @@ func DeckGenerator() {
 	}
 	r := RandomNumber(len(Deck))
 	trumpcard = Deck[r]
-	Remove(Deck, r)
+	Deck = Remove(Deck, r)
 }
 
 type Card struct {
