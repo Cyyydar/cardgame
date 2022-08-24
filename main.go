@@ -15,6 +15,7 @@ var Deck []Card
 var attackTable []Card
 var defenseTable []Card
 var trumpcard Card
+var players []Hand
 
 func RandomNumber(c int) int {
 	seed := time.Now().Unix()
@@ -109,7 +110,7 @@ func (h *Hand) pick() Card {
 				h.Hand = Remove(h.Hand, cardnum)                    //удаляем карту из руки
 
 				return card
-			} else if len(attackTable) > len(defenseTable) && h.Hand[cardnum].Value > attackTable[len(attackTable)-1].Value && h.Hand[cardnum].Suit == attackTable[len(attackTable)-1].Suit { //защита
+			} else if len(attackTable) > len(defenseTable) && h.Hand[cardnum].Value > attackTable[len(attackTable)-1].Value && h.Hand[cardnum].Suit == attackTable[len(attackTable)-1].Suit || h.Hand[cardnum].Suit == trumpcard.Suit && attackTable[len(attackTable)-1].Suit != trumpcard.Suit { //защита
 				fmt.Println("\033[31m", h.Hand[cardnum], "\033[0m") // печатаем карту
 				card := h.Hand[cardnum]                             // запоминаем карту
 				h.Hand = Remove(h.Hand, cardnum)                    //удаляем карту из руки
@@ -162,53 +163,92 @@ func skip(b bool, i *int) {
 	}
 }
 
-func main() {
-	//web()
+func start(countPlayers int) {
 	Deck = make([]Card, 52)
 	DeckGenerator()
-	countPlayers := 0 // спрашиваем сколько игроков будет
-	for {
-		fmt.Println("Enter the number of players")
-		var temp string
-		fmt.Scanf("%s\n", &temp)
-		countPlayers, _ = strconv.Atoi(temp)
-		if countPlayers > 1 && countPlayers < 10 {
-			break
-		}
-		fmt.Println("Try again")
-	}
-	players := make([]Hand, countPlayers) // создаем слайс игроков
+	//countPlayers := 0 // спрашиваем сколько игроков будет
+	// for {
+	// 	fmt.Println("Enter the number of players")
+	// 	var temp string
+	// 	fmt.Scanf("%s\n", &temp)
+	// 	countPlayers, _ = strconv.Atoi(temp)
+	// 	if countPlayers > 1 && countPlayers < 10 {
+	// 		break
+	// 	}
+	// 	fmt.Println("Try again")
+	// }
+	players = make([]Hand, countPlayers) // создаем слайс игроков
 
 	for i := range players {
 		players[i].Fill()
 	}
+}
+
+func main() {
+	web()
+	//start()
 	fmt.Println(trumpcard)
 	// атака по кругу
 	for i := 0; ; i++ {
 		fmt.Println("Turn player", i%len(players), "under", (i+1)%len(players))
-		// if i >= len(players)-1 {
-		// 	sp := players[i].Attack(&players[0])
-		// 	i = -1
-		// 	skip(sp, &i)
-
-		// } else {
-		// 	sp := players[i].Attack(&players[i+1])
-		// 	skip(sp, &i)
-		// }
 		sp := players[i%len(players)].Attack(&players[(i+1)%len(players)])
 		skip(sp, &i)
 	}
 
 }
 
-func viewHandler(writer http.ResponseWriter, equest *http.Request) {
-	test := []Card{{Suit: "heart", Value: 2}, {Suit: "heart", Value: 3}, {Suit: "heart", Value: 4}, {Suit: "heart", Value: 5}, {Suit: "heart", Value: 6}, {Suit: "heart", Value: 7}}
+func check(e error) {
+	if e != nil {
+		log.Fatal(e)
+	}
+}
+
+func startHandler(writer http.ResponseWriter, request *http.Request) {
+	html, _ := template.ParseFiles("start.html")
+	html.Execute(writer, nil)
+
+}
+
+func gameHandler(writer http.ResponseWriter, request *http.Request) {
+	type Data struct {
+		Trumpcard Card
+		AttackTable []Card
+		DefenseTable []Card
+		Hand []Card
+	}
+	gameData := Data{}
+	gameData.Hand = []Card{{Suit: "heart", Value: 2}, {Suit: "heart", Value: 3}, {Suit: "heart", Value: 4}, {Suit: "heart", Value: 5}, {Suit: "heart", Value: 6}, {Suit: "heart", Value: 7}}
+	gameData.AttackTable = gameData.Hand
+	gameData.DefenseTable = gameData.Hand
+	gameData.Trumpcard = Card{"heart",2}
 	html, _ := template.ParseFiles("main.html")
-	html.Execute(writer, test)
+	html.Execute(writer, gameData)
+}
+
+func createHandler(writer http.ResponseWriter, request *http.Request) {
+	temp := request.FormValue("countPlayers")
+	//_, err := writer.Write([]byte(temp))
+	//check(err)
+
+	countPlayers := 0
+	countPlayers, _ = strconv.Atoi(temp)
+	if countPlayers > 0 && countPlayers <= 6{
+		start(countPlayers)
+		http.Redirect(writer,request, "/game", http.StatusFound)
+	} else {
+		http.Redirect(writer,request, "/game/start", http.StatusFound)
+	}
+}
+
+func turnHandler(writer http.ResponseWriter, request *http.Request) {
+	temp := request.FormValue("cardNumber")
 }
 
 func web() {
-	http.HandleFunc("/game", viewHandler)
+	http.HandleFunc("/game/start", startHandler)
+	http.HandleFunc("/game", gameHandler)
+	http.HandleFunc("/game/start/create", createHandler)
+
 	err := http.ListenAndServe("localhost:8080", nil)
 	log.Fatal(err)
 }

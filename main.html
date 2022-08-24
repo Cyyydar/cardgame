@@ -1,16 +1,25 @@
 <h1>Дурак</h1>
 <h1>Сам дурак</h1>
-
+<h2>Козырь {{.Trumpcard}}</h2>
 <div>
     <h2>Стол</h2>
-    {{range .}}
-        <p>{{.}}</p>
+    <div>
+    {{range .AttackTable}}
+        {{.}} 
     {{end}}
+    </div>
+    
+    <div>{{range .DefenseTable}}
+        {{.}}
+    {{end}}
+    </div>
 </div>
 
 <div>
     <h2>Рука</h2>
-    {{range .}}
-        <p>{{.}}</p>
+    {{range $i, $a := .Hand}}   
+    <form action="/game/start/create" method="POST">
+        <button value="{{$i}}" type="submit" name="cardNumber">{{$a}}</button>
+    </form>
     {{end}}
 </div>
