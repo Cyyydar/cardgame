@@ -1,5 +1,6 @@
 <h1>Дурак</h1>
 <h1>Сам дурак</h1>
+<h2>Ход {{.Turn}}</h2>
 <h2>Козырь {{.Trumpcard}}</h2>
 <div>
     <h2>Стол</h2>
@@ -18,8 +19,11 @@
 <div>
     <h2>Рука</h2>
     {{range $i, $a := .Hand}}   
-    <form action="/game/start/create" method="POST">
+    <form action="/game/turn" method="POST">
         <button value="{{$i}}" type="submit" name="cardNumber">{{$a}}</button>
     </form>
     {{end}}
+    <form action="/game/turn" method="POST">
+        <button value="-" type="submit" name="cardNumber">skip</button>
+    </form>
 </div>

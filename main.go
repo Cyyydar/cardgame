@@ -16,6 +16,7 @@ var attackTable []Card
 var defenseTable []Card
 var trumpcard Card
 var players []Hand
+var playerTurn int
 
 func RandomNumber(c int) int {
 	seed := time.Now().Unix()
@@ -123,60 +124,98 @@ func (h *Hand) pick() Card {
 
 }
 
-func (h *Hand) Attack(anotherHand *Hand) bool {
-	attackTable = nil
-	defenseTable = nil
-	deflen := len(anotherHand.Hand)
-	skip := false
+// func Attack() {
+// 	h = &players[playerTurn%len(players)]
+// 	anotherHand = &players[(playerTurn+1)%len(players)]
+// 	//sp := players[playerTurn%len(players)].Attack(&players[(playerTurn+1)%len(players)])
+	
+// 	deflen := len(anotherHand.Hand)
+// 	skip := false
+	
+// 	for i := 0; i < deflen; i++ {
+// 		fmt.Println("\033[32mAttack: Choice card", 1, "-", len(h.Hand), "\033[0m")
+// 		attackTable = append(attackTable, h.pick())
+// 		if attackTable[len(attackTable)-1].Value == 0 {
+// 			fmt.Println("End of attack")
+// 			break
+// 		}
+// 		fmt.Println(attackTable)  //печатаем столы
+// 		fmt.Println(defenseTable) //печатаем столы
+		
+// 		fmt.Println("\033[32mDefense: Choice card", 1, "-", len(anotherHand.Hand), "\033[0m")
+// 		defenseTable = append(defenseTable, anotherHand.pick())
+// 		if defenseTable[len(defenseTable)-1].Value == 0 {
+// 			fmt.Println("You lose")
+// 			anotherHand.Hand = append(anotherHand.Hand, defenseTable[:len(defenseTable)-1]...)
+// 			anotherHand.Hand = append(anotherHand.Hand, attackTable...)
+			
+// 			playerTurn++
+// 			attackTable = nil
+// 			defenseTable = nil
+// 			break
+// 		}
+// 	}
+// 	// добираем карты
+// 	h.Fill()
+// 	anotherHand.Fill()
+// }
 
-	for i := 0; i < deflen; i++ {
-		fmt.Println("\033[32mAttack: Choice card", 1, "-", len(h.Hand), "\033[0m")
-		attackTable = append(attackTable, h.pick())
-		if attackTable[len(attackTable)-1].Value == 0 {
-			fmt.Println("End of attack")
-			break
-		}
-		fmt.Println(attackTable)  //печатаем столы
-		fmt.Println(defenseTable) //печатаем столы
+func Turn(choice string) {
+	// var choice string
+	cardnum, _ := strconv.Atoi(choice)
+	table := make(map[int]int)
+	Table(table)
+	fmt.Println(playerTurn)
+	_, ok := table[players[playerTurn%len(players)].Hand[cardnum].Value]
+	fmt.Println(playerTurn)
 
-		fmt.Println("\033[32mDefense: Choice card", 1, "-", len(anotherHand.Hand), "\033[0m")
-		defenseTable = append(defenseTable, anotherHand.pick())
-		if defenseTable[len(defenseTable)-1].Value == 0 {
-			fmt.Println("You lose")
-			anotherHand.Hand = append(anotherHand.Hand, defenseTable[:len(defenseTable)-1]...)
-			anotherHand.Hand = append(anotherHand.Hand, attackTable...)
-			skip = true
-			break
+	if choice == "-" && len(attackTable) <= len(defenseTable) {
+		endTurn()
+		return
+	} else if choice == "-" && len(attackTable) > len(defenseTable) {
+		if len(defenseTable) != 0 {
+			players[playerTurn%len(players)].Hand = append(players[playerTurn%len(players)].Hand, defenseTable[:len(defenseTable)-1]...)
 		}
+		players[playerTurn%len(players)].Hand = append(players[playerTurn%len(players)].Hand, attackTable...)
+		endTurn()
+		return
 	}
-	// добираем карты
-	h.Fill()
-	anotherHand.Fill()
-	return skip
+	if len(attackTable) <= len(defenseTable) && (ok || len(table) == 0) { // атака
+		fmt.Println("Attack")
+		fmt.Println("\033[31m", players[playerTurn%len(players)].Hand[cardnum], "\033[0m") // печатаем карту
+		attackTable = append(attackTable, players[playerTurn%len(players)].Hand[cardnum])
+		players[playerTurn%len(players)].Hand = Remove(players[playerTurn%len(players)].Hand, cardnum)  
+		playerTurn++                  //удаляем карту из руки
+	} else if len(attackTable) > len(defenseTable) && players[playerTurn%len(players)].Hand[cardnum].Value > attackTable[len(attackTable)-1].Value && players[playerTurn%len(players)].Hand[cardnum].Suit == attackTable[len(attackTable)-1].Suit || players[playerTurn%len(players)].Hand[cardnum].Suit == trumpcard.Suit && attackTable[len(attackTable)-1].Suit != trumpcard.Suit { //защита
+		fmt.Println("\033[31m", players[playerTurn%len(players)].Hand[cardnum], "\033[0m") // печатаем карту
+		defenseTable = append(defenseTable, players[playerTurn%len(players)].Hand[cardnum])                             // запоминаем карту
+		players[playerTurn%len(players)].Hand = Remove(players[playerTurn%len(players)].Hand, cardnum)                    //удаляем карту из руки
+		playerTurn--
+	}
 }
 
+func endTurn() {
+	players[playerTurn%len(players)].Fill()
+	players[(playerTurn+1)%len(players)].Fill()
+	attackTable = nil
+	defenseTable = nil
+	playerTurn++
+}
 //--------------------------------
 
-func skip(b bool, i *int) {
+func skip(b bool) {
 	if b {
-		*i++
+		playerTurn++
 	}
 }
 
 func start(countPlayers int) {
+	attackTable = nil
+	defenseTable = nil
+	playerTurn = 0
+
 	Deck = make([]Card, 52)
 	DeckGenerator()
-	//countPlayers := 0 // спрашиваем сколько игроков будет
-	// for {
-	// 	fmt.Println("Enter the number of players")
-	// 	var temp string
-	// 	fmt.Scanf("%s\n", &temp)
-	// 	countPlayers, _ = strconv.Atoi(temp)
-	// 	if countPlayers > 1 && countPlayers < 10 {
-	// 		break
-	// 	}
-	// 	fmt.Println("Try again")
-	// }
 	players = make([]Hand, countPlayers) // создаем слайс игроков
 
 	for i := range players {
@@ -186,15 +225,6 @@ func start(countPlayers int) {
 
 func main() {
 	web()
-	//start()
-	fmt.Println(trumpcard)
-	// атака по кругу
-	for i := 0; ; i++ {
-		fmt.Println("Turn player", i%len(players), "under", (i+1)%len(players))
-		sp := players[i%len(players)].Attack(&players[(i+1)%len(players)])
-		skip(sp, &i)
-	}
-
 }
 
 func check(e error) {
@@ -210,17 +240,23 @@ func startHandler(writer http.ResponseWriter, request *http.Request) {
 }
 
 func gameHandler(writer http.ResponseWriter, request *http.Request) {
+	// if len(players) == 0 {
+	// 	http.Redirect(writer,request, "/game/start", http.StatusFound)
+	// }	
 	type Data struct {
 		Trumpcard Card
+		Turn int
 		AttackTable []Card
 		DefenseTable []Card
 		Hand []Card
 	}
-	gameData := Data{}
-	gameData.Hand = []Card{{Suit: "heart", Value: 2}, {Suit: "heart", Value: 3}, {Suit: "heart", Value: 4}, {Suit: "heart", Value: 5}, {Suit: "heart", Value: 6}, {Suit: "heart", Value: 7}}
-	gameData.AttackTable = gameData.Hand
-	gameData.DefenseTable = gameData.Hand
-	gameData.Trumpcard = Card{"heart",2}
+	gameData := Data{
+		trumpcard,
+		playerTurn%len(players),
+		attackTable,
+		defenseTable,
+		players[playerTurn%len(players)].Hand,
+	}
 	html, _ := template.ParseFiles("main.html")
 	html.Execute(writer, gameData)
 }
@@ -238,16 +274,24 @@ func createHandler(writer http.ResponseWriter, request *http.Request) {
 	} else {
 		http.Redirect(writer,request, "/game/start", http.StatusFound)
 	}
-}
+	}
 
 func turnHandler(writer http.ResponseWriter, request *http.Request) {
 	temp := request.FormValue("cardNumber")
+	
+	//fmt.Println("Turn player", playerTurn%len(players), "under", (playerTurn+1)%len(players))
+	//sp := players[playerTurn%len(players)].Attack(&players[(playerTurn+1)%len(players)])
+	// skip(sp)
+	fmt.Println("from turnHandler",temp)
+	Turn(temp)
+	http.Redirect(writer,request, "/game", http.StatusFound)		
 }
 
 func web() {
 	http.HandleFunc("/game/start", startHandler)
 	http.HandleFunc("/game", gameHandler)
 	http.HandleFunc("/game/start/create", createHandler)
+	http.HandleFunc("/game/turn", turnHandler)
 
 	err := http.ListenAndServe("localhost:8080", nil)
 	log.Fatal(err)
