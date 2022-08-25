@@ -109,7 +109,7 @@ func (h *Hand) pick() Card {
 				h.Hand = Remove(h.Hand, cardnum)                    //удаляем карту из руки
 
 				return card
-			} else if len(attackTable) > len(defenseTable) && h.Hand[cardnum].Value > attackTable[len(attackTable)-1].Value && h.Hand[cardnum].Suit == attackTable[len(attackTable)-1].Suit { //защита
+			} else if len(attackTable) > len(defenseTable) && h.Hand[cardnum].Value > attackTable[len(attackTable)-1].Value && h.Hand[cardnum].Suit == attackTable[len(attackTable)-1].Suit || attackTable[len(attackTable)-1].Suit != trumpcard.Suit && h.Hand[cardnum].Suit == trumpcard.Suit { //защита
 				fmt.Println("\033[31m", h.Hand[cardnum], "\033[0m") // печатаем карту
 				card := h.Hand[cardnum]                             // запоминаем карту
 				h.Hand = Remove(h.Hand, cardnum)                    //удаляем карту из руки
