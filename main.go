@@ -16,7 +16,7 @@ var attackTable []Card
 var defenseTable []Card
 var trumpcard Card
 var players []Hand
-var playerTurn int
+var playerTurn = 1
 
 func RandomNumber(c int) int {
 	seed := time.Now().Unix()
@@ -59,17 +59,17 @@ type Hand struct {
 
 // заполняет руку 6 картами
 func (h *Hand) Fill() {
-	if (6-len(h.Hand) < 0 || len(Deck) == 0) && trumpcard != (Card{"", 0}) {
+	for i := len(h.Hand); i < 6 && len(Deck) > 0; i++ {
+		r := RandomNumber(len(Deck))
+		h.Hand = append(h.Hand, Deck[r])
+		Deck = Remove(Deck, r)
+	}
+	if 6-len(h.Hand) < 0 && len(Deck) == 0 && trumpcard != (Card{"", 0}) {
 		h.Hand = append(h.Hand, trumpcard)
 		trumpcard = Card{"", 0}
 		return
 	} else if trumpcard == (Card{"", 0}) {
 		return
-	}
-	for i := len(h.Hand); i < 6; i++ {
-		r := RandomNumber(len(Deck))
-		h.Hand = append(h.Hand, Deck[r])
-		Deck = Remove(Deck, r)
 	}
 }
 
@@ -180,6 +180,9 @@ func Turn(choice string) {
 		endTurn()
 		return
 	}
+	/* Нужно переработать систему с ходами:
+	счетчик ходов +1 будет указывать на человека, который защищается
+	или ввести отдельный счетчик защиты*/
 	if len(attackTable) <= len(defenseTable) && (ok || len(table) == 0) { // атака
 		fmt.Println("Attack")
 		fmt.Println("\033[31m", players[playerTurn%len(players)].Hand[cardnum], "\033[0m") // печатаем карту
@@ -237,26 +240,31 @@ func check(e error) {
 func startHandler(writer http.ResponseWriter, request *http.Request) {
 	html, _ := template.ParseFiles("start.html")
 	html.Execute(writer, nil)
-
 }
 
 func gameHandler(writer http.ResponseWriter, request *http.Request) {
 	// if len(players) == 0 {
 	// 	http.Redirect(writer,request, "/game/start", http.StatusFound)
 	// }
+	temp := string(request.URL.String()[len(request.URL.String())-1])
+	currentPlayer, _ := strconv.Atoi(temp)
 	type Data struct {
-		Trumpcard    Card
-		Turn         int
-		AttackTable  []Card
-		DefenseTable []Card
-		Hand         []Card
+		Trumpcard     Card
+		Turn          int
+		AttackTable   []Card
+		DefenseTable  []Card
+		Hand          []Card
+		CountCards    int
+		CurrentPlayer int
 	}
 	gameData := Data{
 		trumpcard,
 		playerTurn % len(players),
 		attackTable,
 		defenseTable,
-		players[playerTurn%len(players)].Hand,
+		players[currentPlayer].Hand,
+		len(Deck),
+		currentPlayer,
 	}
 	html, _ := template.ParseFiles("main.html")
 	html.Execute(writer, gameData)
@@ -271,10 +279,24 @@ func createHandler(writer http.ResponseWriter, request *http.Request) {
 	countPlayers, _ = strconv.Atoi(temp)
 	if countPlayers > 0 && countPlayers <= 6 {
 		start(countPlayers)
-		http.Redirect(writer, request, "/game", http.StatusFound)
+		for i := 0; i < countPlayers; i++ {
+			http.HandleFunc("/game/"+fmt.Sprint(i), gameHandler)
+		}
+		http.Redirect(writer, request, "/game/start/room", http.StatusFound)
 	} else {
 		http.Redirect(writer, request, "/game/start", http.StatusFound)
 	}
+}
+
+func roomHandler(writer http.ResponseWriter, request *http.Request) {
+	type Data struct {
+		Players []Hand
+	}
+	gameData := Data{
+		Players: players,
+	}
+	html, _ := template.ParseFiles("room.html")
+	html.Execute(writer, gameData)
 }
 
 func turnHandler(writer http.ResponseWriter, request *http.Request) {
@@ -283,15 +305,15 @@ func turnHandler(writer http.ResponseWriter, request *http.Request) {
 	//fmt.Println("Turn player", playerTurn%len(players), "under", (playerTurn+1)%len(players))
 	//sp := players[playerTurn%len(players)].Attack(&players[(playerTurn+1)%len(players)])
 	// skip(sp)
-	fmt.Println("from turnHandler", temp)
+	fmt.Println(playerTurn)
 	Turn(temp)
 	http.Redirect(writer, request, "/game", http.StatusFound)
 }
 
 func web() {
 	http.HandleFunc("/game/start", startHandler)
-	http.HandleFunc("/game", gameHandler)
 	http.HandleFunc("/game/start/create", createHandler)
+	http.HandleFunc("/game/start/room", roomHandler)
 	http.HandleFunc("/game/turn", turnHandler)
 
 	err := http.ListenAndServe("localhost:8080", nil)

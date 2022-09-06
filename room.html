@@ -1,0 +1,7 @@
+<div>
+    {{range $i, $a := .Players}}   
+        <form action="/game/{{$i}}" method="POST">
+        <button value="{{$i}}" name="playerNumber">Присоедениться за {{$i}}</button>
+        </form>
+    {{end}}
+</div>
